@@ -1,9 +1,14 @@
 #!/usr/bin/env python
 import copy
-import sys
+import argparse
 from lxml import etree
 
-TREE = etree.parse(sys.argv[1])
+parser = argparse.ArgumentParser()
+parser.add_argument("SVG", help="input SVG file")
+parser.add_argument("-p",  metavar='PREFIX', help="set ordered output prefix")
+args = parser.parse_args()
+
+TREE = etree.parse(args.SVG)
 ROOT = TREE.getroot()
 LAYER_ATTR = "{http://www.w3.org/2000/svg}g"
 LABEL_ATTR = "{http://www.inkscape.org/namespaces/inkscape}label"
@@ -12,13 +17,19 @@ LAYERS = [g for g in ROOT.findall(LAYER_ATTR) if g.get(LABEL_ATTR) != "backgroun
 print len(LAYERS), "layers found."
 
 for i, layer in enumerate(LAYERS, 1):
-    slide_num = str(i).zfill(len(LAYERS)/10)
-    slide_title = layer.get(LABEL_ATTR)
-    slide_tree = copy.deepcopy(TREE)
-    slide_root = slide_tree.getroot()
-    for g in slide_root.findall(LAYER_ATTR):
-        if g.get(LABEL_ATTR) not in (slide_title, "background"):
-            slide_root.remove(g)
-    out_file = "slide-%s.svg" % slide_num
+    layer_num = str(i).zfill(len(LAYERS)/10)
+    if layer.get(LABEL_ATTR):
+        layer_title = layer.get(LABEL_ATTR)
+    else:
+        layer_title = "layer-%s" % layer_num
+    layer_tree = copy.deepcopy(TREE)
+    layer_root = layer_tree.getroot()
+    for g in layer_root.findall(LAYER_ATTR):
+        if g.get(LABEL_ATTR) not in (layer_title, "background"):
+            layer_root.remove(g)
+    if args.p:
+        out_file = "%s-%s.svg" % (args.p, layer_num)
+    else:
+        out_file = "%s.svg" % layer_title
     print out_file, "saved."
-    slide_tree.write(out_file)
+    layer_tree.write(out_file)
